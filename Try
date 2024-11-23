@@ -31,3 +31,30 @@ for batch_idx, (src_batch, trg_batch) in enumerate(train_loader):
 print(type(train_data_np))  # Should be <class 'numpy.ndarray'>
 print(train_data_np.dtype)  # Should not be 'object'
 print(train_data_np[0])     # Check the first row for content
+
+
+import numpy as np
+
+# Define a padding function
+def pad_to_fixed_length(sequences, max_length, padding_value=0):
+    """Pad sequences to the max length with padding_value."""
+    return np.array([seq[:max_length] + [padding_value] * max(0, max_length - len(seq)) for seq in sequences])
+
+# Set a maximum sequence length for padding
+MAX_LENGTH = 100  # Adjust this based on your dataset
+
+# Apply padding to src and trg
+train_src = pad_to_fixed_length(train_df['src'].tolist(), MAX_LENGTH)
+train_trg = pad_to_fixed_length(train_df['trg'].tolist(), MAX_LENGTH)
+
+val_src = pad_to_fixed_length(val_df['src'].tolist(), MAX_LENGTH)
+val_trg = pad_to_fixed_length(val_df['trg'].tolist(), MAX_LENGTH)
+
+test_src = pad_to_fixed_length(test_df['src'].tolist(), MAX_LENGTH)
+test_trg = pad_to_fixed_length(test_df['trg'].tolist(), MAX_LENGTH)
+
+# Combine into a single NumPy array for each dataset
+train_data_np = np.array(list(zip(train_src, train_trg)), dtype=np.float32)
+val_data_np = np.array(list(zip(val_src, val_trg)), dtype=np.float32)
+test_data_np = np.array(list(zip(test_src, test_trg)), dtype=np.float32)
+
