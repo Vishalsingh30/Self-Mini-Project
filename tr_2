@@ -1,0 +1,92 @@
+import torch
+import torch.nn as nn
+import torch.optim as optim
+
+class Seq2SeqRNN(nn.Module):
+    def __init__(self, input_size, hidden_size, output_size, num_layers=1):
+        super(Seq2SeqRNN, self).__init__()
+        
+        # Encoder: Simple RNN
+        self.encoder = nn.RNN(input_size, hidden_size, num_layers, batch_first=True)
+        
+        # Decoder: Simple RNN
+        self.decoder = nn.RNN(hidden_size, hidden_size, num_layers, batch_first=True)
+        
+        # Fully connected layer to predict the next word in the sequence
+        self.fc = nn.Linear(hidden_size, output_size)
+        
+    def forward(self, src, trg, teacher_forcing_ratio=0.5):
+        # Encoder
+        _, hidden = self.encoder(src)
+        
+        # Decoder
+        outputs = []
+        decoder_input = trg[:, 0].unsqueeze(1)  # Start with the first word in the target sentence (e.g., <SOS>)
+        
+        for t in range(1, trg.size(1)):
+            output, hidden = self.decoder(decoder_input, hidden)
+            prediction = self.fc(output.squeeze(1))  # Get predicted word
+            outputs.append(prediction)
+            
+            # Get the next input to the decoder (teacher forcing or predicted)
+            teacher_force = torch.rand(1).item() < teacher_forcing_ratio
+            top1 = prediction.argmax(1)  # Get the predicted word index
+            
+            decoder_input = trg[:, t].unsqueeze(1) if teacher_force else top1.unsqueeze(1)
+        
+        outputs = torch.stack(outputs, dim=1)  # Shape: [batch_size, seq_len, output_size]
+        return outputs
+
+# Hyperparameters
+input_size = 50  # Embedding size or input features for each word
+hidden_size = 256  # Size of the hidden state
+output_size = 50  # Number of classes for target language (English vocabulary size)
+num_layers = 1  # Number of RNN layers
+teacher_forcing_ratio = 0.5  # Probability of using teacher forcing
+
+# Initialize model, loss function, and optimizer
+model = Seq2SeqRNN(input_size, hidden_size, output_size, num_layers)
+criterion = nn.CrossEntropyLoss()  # For multi-class classification
+optimizer = optim.Adam(model.parameters(), lr=0.001)
+
+# Training loop
+for epoch in range(EPOCHS):
+    model.train()
+    running_loss = 0.0
+    correct_preds = 0
+    total_preds = 0
+
+    for batch_idx, (src_batch, trg_batch) in enumerate(train_loader):
+        # Move data to device (GPU or CPU)
+        src_batch, trg_batch = src_batch.to(device), trg_batch.to(device)
+
+        # Zero gradients
+        optimizer.zero_grad()
+
+        # Forward pass
+        output = model(src_batch, trg_batch, teacher_forcing_ratio)
+
+        # Compute loss
+        # Flatten output and target for loss computation
+        output_flat = output.view(-1, output.shape[-1])  # Shape: [batch_size * seq_len, num_classes]
+        trg_batch_flat = trg_batch[:, 1:].contiguous().view(-1)  # Skip <SOS>, target shape: [batch_size * seq_len]
+
+        loss = criterion(output_flat, trg_batch_flat)  # CrossEntropyLoss
+        loss.backward()
+        optimizer.step()
+
+        # Track running loss
+        running_loss += loss.item()
+
+        # Get predictions (argmax of output for each timestep)
+        _, predicted = torch.max(output, dim=2)
+
+        # Calculate accuracy for this batch
+        correct_preds += (predicted == trg_batch[:, 1:]).sum().item()  # Exclude <SOS> token
+        total_preds += trg_batch[:, 1:].numel()  # Exclude <SOS> token
+
+    # Average loss and accuracy for the epoch
+    avg_loss = running_loss / len(train_loader)
+    accuracy = 100 * correct_preds / total_preds
+
+    print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%")
