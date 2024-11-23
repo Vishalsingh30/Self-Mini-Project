@@ -1,0 +1,22 @@
+from torch.utils.data import DataLoader
+from torch.nn.utils.rnn import pad_sequence
+
+# Collate function to pad sequences in a batch
+def collate_fn(batch):
+    src_batch, trg_batch = zip(*batch)
+    src_batch = pad_sequence([torch.tensor(x) for x in src_batch], batch_first=True, padding_value=0)
+    trg_batch = pad_sequence([torch.tensor(x) for x in trg_batch], batch_first=True, padding_value=0)
+    return src_batch, trg_batch
+
+# Create Dataset objects
+train_dataset = TranslationDataset(train_data_np)
+val_dataset = TranslationDataset(val_data_np)
+test_dataset = TranslationDataset(test_data_np)
+
+# Define batch size
+BATCH_SIZE = 64
+
+# Create DataLoader objects
+train_loader = DataLoader(train_dataset, batch_size=BATCH_SIZE, shuffle=True, collate_fn=collate_fn)
+val_loader = DataLoader(val_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
+test_loader = DataLoader(test_dataset, batch_size=BATCH_SIZE, shuffle=False, collate_fn=collate_fn)
