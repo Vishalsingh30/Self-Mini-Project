@@ -90,3 +90,5 @@ for epoch in range(EPOCHS):
     accuracy = 100 * correct_preds / total_preds
 
     print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%")
+
+decoder_input = decoder_input.unsqueeze(2).expand(-1, -1, hidden.size(-1))
