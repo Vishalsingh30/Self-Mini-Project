@@ -1,7 +1,3 @@
-import torch
-import torch.nn as nn
-import torch.optim as optim
-
 class Seq2SeqRNN(nn.Module):
     def __init__(self, input_size, hidden_size, output_size, num_layers=1):
         super(Seq2SeqRNN, self).__init__()
@@ -17,24 +13,40 @@ class Seq2SeqRNN(nn.Module):
         
     def forward(self, src, trg, teacher_forcing_ratio=0.5):
         # Encoder
+        # Initial hidden state for the encoder (shape: [num_layers, batch_size, hidden_size])
         _, hidden = self.encoder(src)
+        
+        # Ensure that hidden state is 3D (num_layers, batch_size, hidden_size)
+        # If hidden is 2D, we need to reshape it to 3D.
+        # The RNN produces a tuple: (output, hidden), where hidden is [num_layers, batch_size, hidden_size]
+        if hidden.dim() == 2:
+            hidden = hidden.unsqueeze(0)  # Convert [num_layers, batch_size, hidden_size] to 3D tensor
         
         # Decoder
         outputs = []
         decoder_input = trg[:, 0].unsqueeze(1)  # Start with the first word in the target sentence (e.g., <SOS>)
         
         for t in range(1, trg.size(1)):
+            # Ensure decoder_input has the right shape: [batch_size, 1, hidden_size]
+            decoder_input = decoder_input.unsqueeze(2).expand(-1, -1, hidden.size(-1))  # [batch_size, 1, hidden_size]
+            
+            # Run the decoder RNN with the previous input and hidden state
             output, hidden = self.decoder(decoder_input, hidden)
-            prediction = self.fc(output.squeeze(1))  # Get predicted word
+            
+            # Pass through fully connected layer
+            prediction = self.fc(output.squeeze(1))  # Squeeze out the second dimension
+            
             outputs.append(prediction)
             
-            # Get the next input to the decoder (teacher forcing or predicted)
+            # Get the next input for the decoder (either using teacher forcing or predicted word)
             teacher_force = torch.rand(1).item() < teacher_forcing_ratio
             top1 = prediction.argmax(1)  # Get the predicted word index
             
+            # Choose next input: true word (teacher forcing) or predicted word
             decoder_input = trg[:, t].unsqueeze(1) if teacher_force else top1.unsqueeze(1)
-        
-        outputs = torch.stack(outputs, dim=1)  # Shape: [batch_size, seq_len, output_size]
+
+        # Stack the outputs to form the final tensor with shape [batch_size, seq_len, output_size]
+        outputs = torch.stack(outputs, dim=1)
         return outputs
 
 # Hyperparameters
