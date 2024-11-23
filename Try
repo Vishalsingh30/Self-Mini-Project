@@ -27,3 +27,7 @@ for batch_idx, (src_batch, trg_batch) in enumerate(train_loader):
     print(f"Batch {batch_idx}: src_batch.shape={src_batch.shape}, trg_batch.shape={trg_batch.shape}")
     if batch_idx == 2:  # Stop after 2 batches
         break
+
+print(type(train_data_np))  # Should be <class 'numpy.ndarray'>
+print(train_data_np.dtype)  # Should not be 'object'
+print(train_data_np[0])     # Check the first row for content
