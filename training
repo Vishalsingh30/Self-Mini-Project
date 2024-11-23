@@ -1,0 +1,134 @@
+import torch
+import torch.nn as nn
+
+class SimpleRNN(nn.Module):
+    def __init__(self, input_dim, hidden_dim, output_dim, num_layers=1):
+        super(SimpleRNN, self).__init__()
+        # Define the layers
+        self.rnn = nn.RNN(input_dim, hidden_dim, num_layers, batch_first=True)
+        self.fc = nn.Linear(hidden_dim, output_dim)
+        self.softmax = nn.Softmax(dim=1)
+
+    def forward(self, x):
+        # Forward pass through the RNN
+        rnn_out, _ = self.rnn(x)
+        # Get the last output of the RNN (assuming many-to-one translation)
+        out = self.fc(rnn_out[:, -1, :])
+        return out
+
+
+# Define hyperparameters
+INPUT_DIM = 100  # Size of the input vectors (i.e., embedding size of words)
+HIDDEN_DIM = 512  # Size of the RNN hidden state
+OUTPUT_DIM = 100  # Size of the output vectors (i.e., target word embedding size)
+NUM_LAYERS = 1  # Number of RNN layers
+BATCH_SIZE = 64
+LEARNING_RATE = 0.001
+EPOCHS = 10
+
+
+# Initialize the model, loss function, and optimizer
+model = SimpleRNN(INPUT_DIM, HIDDEN_DIM, OUTPUT_DIM, NUM_LAYERS)
+criterion = nn.CrossEntropyLoss()  # Suitable for classification tasks (e.g., predicting next word)
+optimizer = torch.optim.Adam(model.parameters(), lr=LEARNING_RATE)
+
+
+# Training loop
+for epoch in range(EPOCHS):
+    model.train()  # Set the model to training mode
+    running_loss = 0.0
+    correct_preds = 0
+    total_preds = 0
+    
+    for batch_idx, (src_batch, trg_batch) in enumerate(train_loader):
+        # Move data to GPU if available
+        src_batch, trg_batch = src_batch.to(device), trg_batch.to(device)
+
+        # Zero the gradients
+        optimizer.zero_grad()
+
+        # Forward pass
+        output = model(src_batch)
+
+        # Calculate the loss
+        loss = criterion(output, trg_batch)  # trg_batch should have the shape (batch_size,)
+        
+        # Backward pass and optimization
+        loss.backward()
+        optimizer.step()
+
+        # Track the loss
+        running_loss += loss.item()
+
+        # Calculate accuracy (if applicable)
+        _, predicted = torch.max(output, 1)
+        correct_preds += (predicted == trg_batch).sum().item()
+        total_preds += trg_batch.size(0)
+
+    # Average loss and accuracy for this epoch
+    avg_loss = running_loss / len(train_loader)
+    accuracy = 100 * correct_preds / total_preds
+
+    print(f"Epoch [{epoch+1}/{EPOCHS}], Loss: {avg_loss:.4f}, Accuracy: {accuracy:.2f}%")
+
+
+# Validation loop
+model.eval()  # Set the model to evaluation mode
+val_loss = 0.0
+val_correct_preds = 0
+val_total_preds = 0
+
+with torch.no_grad():  # No need to compute gradients during validation
+    for src_batch, trg_batch in val_loader:
+        src_batch, trg_batch = src_batch.to(device), trg_batch.to(device)
+
+        # Forward pass
+        output = model(src_batch)
+
+        # Calculate the loss
+        loss = criterion(output, trg_batch)
+        val_loss += loss.item()
+
+        # Calculate accuracy
+        _, predicted = torch.max(output, 1)
+        val_correct_preds += (predicted == trg_batch).sum().item()
+        val_total_preds += trg_batch.size(0)
+
+# Average validation loss and accuracy
+avg_val_loss = val_loss / len(val_loader)
+val_accuracy = 100 * val_correct_preds / val_total_preds
+
+print(f"Validation Loss: {avg_val_loss:.4f}, Validation Accuracy: {val_accuracy:.2f}%")
+
+
+# Save the model
+torch.save(model.state_dict(), "translation_model.pth")
+
+
+# Test loop
+model.eval()  # Set the model to evaluation mode
+test_loss = 0.0
+test_correct_preds = 0
+test_total_preds = 0
+
+with torch.no_grad():
+    for src_batch, trg_batch in test_loader:
+        src_batch, trg_batch = src_batch.to(device), trg_batch.to(device)
+
+        # Forward pass
+        output = model(src_batch)
+
+        # Calculate the loss
+        loss = criterion(output, trg_batch)
+        test_loss += loss.item()
+
+        # Calculate accuracy
+        _, predicted = torch.max(output, 1)
+        test_correct_preds += (predicted == trg_batch).sum().item()
+        test_total_preds += trg_batch.size(0)
+
+# Average test loss and accuracy
+avg_test_loss = test_loss / len(test_loader)
+test_accuracy = 100 * test_correct_preds / test_total_preds
+
+print(f"Test Loss: {avg_test_loss:.4f}, Test Accuracy: {test_accuracy:.2f}%")
