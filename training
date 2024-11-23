@@ -13,7 +13,11 @@ class SimpleRNN(nn.Module):
         # Forward pass through the RNN
         rnn_out, _ = self.rnn(x)
         # Get the last output of the RNN (assuming many-to-one translation)
-        out = self.fc(rnn_out[:, -1, :])
+        if rnn_out.dim() == 2:  # This means sequence length = 1
+            out = self.fc(rnn_out)
+        else:
+            # Otherwise, use the last time step
+            out = self.fc(rnn_out[:, -1, :])
         return out
 
 
